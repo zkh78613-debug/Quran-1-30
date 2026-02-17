@@ -3,132 +3,68 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Full Quran Indo-Pak - 100 Verse Tracker</title>
+    <title>My Daily 100 Quran PDF</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Amiri+Quran&display=swap');
-        
-        body { font-family: 'Segoe UI', sans-serif; background: #fdfdfb; margin: 0; padding: 0; direction: rtl; }
-        
-        /* Sticky Header for Progress */
-        .status-bar { 
+        body { font-family: sans-serif; margin: 0; padding: 0; background: #333; color: white; }
+        .nav-header { 
             position: fixed; top: 0; width: 100%; background: #1b4332; 
-            color: white; padding: 12px; text-align: center; direction: ltr; 
-            z-index: 1000; box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            padding: 15px; text-align: center; z-index: 100; box-shadow: 0 2px 10px rgba(0,0,0,0.5);
         }
-
-        .container { max-width: 900px; margin: 80px auto 20px; background: white; padding: 40px; border-radius: 8px; }
-
-        .quran-display { 
-            font-family: 'Amiri Quran', serif; font-size: 34px; line-height: 2.5; 
-            text-align: justify; color: #111; 
-        }
-
-        .surah-name { 
-            display: block; text-align: center; background: #f1f3f1; 
-            padding: 15px; margin: 50px 0 20px; border-radius: 10px;
-            font-family: sans-serif; font-size: 22px; color: #1b4332; font-weight: bold;
-            direction: ltr; border: 1px solid #d8f3dc;
-        }
-
-        /* HIGHLIGHT FOR THE TARGET VERSE */
-        .daily-goal-marker { 
-            background: #ffecb3; border: 3px dashed #ffab00; 
-            padding: 5px 10px; border-radius: 10px; display: inline; position: relative;
-        }
-        .daily-goal-marker::after {
-            content: " 🏁 DAY TARGET"; font-family: sans-serif; font-size: 12px;
-            position: absolute; top: -25px; left: 0; background: #ffab00;
-            color: black; padding: 2px 6px; border-radius: 4px; font-weight: bold;
-        }
-
-        .v-num { font-size: 18px; color: #777; font-family: sans-serif; margin-left: 8px; }
-        
-        .btn { background: #fff; color: #1b4332; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; margin: 0 8px; }
-        .loading-tag { text-align: center; font-family: sans-serif; color: #666; padding: 20px; direction: ltr; }
+        select { padding: 8px; border-radius: 5px; font-size: 16px; margin: 0 10px; }
+        .pdf-container { margin-top: 70px; height: calc(100vh - 70px); width: 100%; }
+        iframe { width: 100%; height: 100%; border: none; }
     </style>
 </head>
 <body>
 
-<div class="status-bar">
-    <span id="dayCounter">Calculating...</span>
-    <button class="btn" onclick="adjustDay(-1)">Prev Day</button>
-    <button class="btn" onclick="adjustDay(1)">Next Day</button>
+<div class="nav-header">
+    Go to Day: 
+    <select id="daySelector" onchange="jumpToPage()">
+        </select>
+    <span> (Check the highlight for your stop point)</span>
 </div>
 
-<div class="container">
-    <div id="quran-root" class="quran-display"></div>
-    <div id="loader-msg" class="loading-tag">Loading all Chapters...</div>
+<div class="pdf-container">
+    <iframe id="pdfViewer" src="quran.pdf"></iframe>
 </div>
 
 <script>
-    const surahLengths = [7,286,200,176,120,165,206,75,129,109,123,111,43,52,99,128,111,110,98,135,112,78,118,64,77,227,93,88,69,60,34,30,73,54,45,83,182,88,75,85,54,53,89,59,37,35,38,29,18,45,60,49,62,55,78,96,29,22,24,13,14,11,11,18,12,12,30,52,52,44,28,28,20,56,40,31,50,40,46,42,42,15,25,22,17,19,26,30,20,15,21,11,8,8,11,5,8,8,11,11,8,3,9,5,4,7,3,6,3,5,4,5,6];
-    
-    let currentDay = localStorage.getItem('quranTrackerDay') ? parseInt(localStorage.getItem('quranTrackerDay')) : 1;
+    // Map your 100-verse markers to specific PDF page numbers
+    // Example: Day 1 stops on page 12, Day 2 stops on page 25...
+    const dayToPage = {
+        1: 1,  // Day 1 starts on page 1
+        2: 12, // Day 2 starts on page 12
+        3: 25, // Day 3 starts on page 25
+        // ... add the rest of your page numbers here
+    };
 
-    function findMarker(day) {
-        let targetCount = day * 100;
-        let runningTotal = 0;
-        for (let i = 0; i < surahLengths.length; i++) {
-            if (runningTotal + surahLengths[i] >= targetCount) {
-                return { surah: i + 1, verse: targetCount - runningTotal };
-            }
-            runningTotal += surahLengths[i];
+    const selector = document.getElementById('daySelector');
+    const viewer = document.getElementById('pdfViewer');
+
+    // Create the dropdown options
+    for (let i = 1; i <= 63; i++) {
+        let opt = document.createElement('option');
+        opt.value = i;
+        opt.innerHTML = "Day " + i;
+        selector.appendChild(opt);
+    }
+
+    function jumpToPage() {
+        const day = selector.value;
+        const page = dayToPage[day] || 1;
+        // This adds "#page=X" to the URL which tells the browser to scroll the PDF
+        viewer.src = `quran.pdf#page=${page}`;
+        localStorage.setItem('savedPdfDay', day);
+    }
+
+    // Remember where they were last time
+    window.onload = () => {
+        const lastDay = localStorage.getItem('savedPdfDay');
+        if (lastDay) {
+            selector.value = lastDay;
+            jumpToPage();
         }
-        return { surah: 114, verse: 6 };
-    }
-
-    async function loadQuran() {
-        const root = document.getElementById('quran-root');
-        const target = findMarker(currentDay);
-        document.getElementById('dayCounter').innerText = `Day ${currentDay} | Target: Surah ${target.surah}:${target.verse}`;
-
-        for (let s = 1; s <= 114; s++) {
-            let surahDiv = document.createElement('div');
-            surahDiv.innerHTML = `<div class="surah-name">Surah ${s}</div>`;
-            root.appendChild(surahDiv);
-
-            let page = 1;
-            let hasNext = true;
-
-            while (hasNext) {
-                const response = await fetch(`https://api.quran.com/api/v4/quran/verses/indopak?chapter_number=${s}&page=${page}&per_page=50`);
-                const data = await response.json();
-                
-                data.verses.forEach(v => {
-                    const vNum = parseInt(v.verse_key.split(':')[1]);
-                    const isTarget = (s === target.surah && vNum === target.verse);
-                    
-                    const span = document.createElement('span');
-                    if (isTarget) span.className = 'daily-goal-marker';
-                    span.innerHTML = ` ${v.text_indopak} <span class="v-num">(${vNum})</span> `;
-                    surahDiv.appendChild(span);
-                });
-
-                if (data.pagination.next_page) {
-                    page++;
-                } else {
-                    hasNext = false;
-                }
-            }
-
-            // After each surah loads, check if we should scroll to the marker
-            if (s === target.surah) {
-                setTimeout(() => {
-                    document.querySelector('.daily-goal-marker')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }, 500);
-            }
-        }
-        document.getElementById('loader-msg').innerText = "All 114 Surahs Loaded.";
-    }
-
-    function adjustDay(change) {
-        currentDay += change;
-        if (currentDay < 1) currentDay = 1;
-        localStorage.setItem('quranTrackerDay', currentDay);
-        location.reload();
-    }
-
-    loadQuran();
+    };
 </script>
 
 </body>
